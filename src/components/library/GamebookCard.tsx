@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import type { Gamebook } from '@/lib/supabase/types'
 import { BookOpen } from 'lucide-react'
@@ -51,9 +50,12 @@ export default function GamebookCard({ gamebook, nodeCount }: GamebookCardProps)
       </CardContent>
 
       <CardFooter className="pt-0">
-        <Button asChild className="w-full" size="sm">
-          <Link href={`/hrat/${gamebook.id}`}>Hrát</Link>
-        </Button>
+        <Link
+          href={`/hrat/${gamebook.id}`}
+          className="inline-flex items-center justify-center w-full rounded-md bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 text-sm font-medium transition-colors"
+        >
+          Hrát
+        </Link>
       </CardFooter>
     </Card>
   )

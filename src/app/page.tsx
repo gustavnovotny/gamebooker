@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import GamebookCard from '@/components/library/GamebookCard'
 import { BookOpen } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 export const metadata = { title: 'Gamebooker — Čti a hraj gamebooky' }
 
@@ -38,9 +37,12 @@ export default async function LibraryPage() {
             <BookOpen className="w-6 h-6 text-indigo-600" />
             <span className="font-bold text-lg text-slate-900">Gamebooker</span>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/prihlasit">Přihlásit se jako tvůrce</Link>
-          </Button>
+          <Link
+            href="/prihlasit"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-sm font-medium transition-colors"
+          >
+            Přihlásit se jako tvůrce
+          </Link>
         </div>
       </header>
 
