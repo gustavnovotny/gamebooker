@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import GamebookEditor from '@/components/creator/editor/GamebookEditor'
-import type { Gamebook, Node, Choice } from '@/lib/supabase/types'
+import type { Gamebook, Node, Choice, Item, NodeItem, CombatConfig } from '@/lib/supabase/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -25,17 +25,28 @@ export default async function EditorPage({ params }: Props) {
 
   // Choices and combat configs depend on node IDs
   const nodeIds = nodes.map((n) => n.id)
-  const [{ data: rawChoices }, { data: rawCombatConfigs }] = await Promise.all([
+  const [
+    { data: rawChoices },
+    { data: rawCombatConfigs },
+    { data: rawItems },
+    { data: rawNodeItems },
+  ] = await Promise.all([
     nodeIds.length > 0
       ? supabase.from('choices').select('*').in('from_node_id', nodeIds)
       : Promise.resolve({ data: [] }),
     nodeIds.length > 0
       ? supabase.from('combat_configs').select('*').in('node_id', nodeIds)
       : Promise.resolve({ data: [] }),
+    supabase.from('items').select('*').eq('gamebook_id', id),
+    nodeIds.length > 0
+      ? supabase.from('node_items').select('*').in('node_id', nodeIds)
+      : Promise.resolve({ data: [] }),
   ])
 
   const choices = (rawChoices as Choice[]) ?? []
-  const combatConfigs = (rawCombatConfigs as import('@/lib/supabase/types').CombatConfig[]) ?? []
+  const combatConfigs = (rawCombatConfigs as CombatConfig[]) ?? []
+  const items = (rawItems as Item[]) ?? []
+  const nodeItems = (rawNodeItems as NodeItem[]) ?? []
 
   return (
     <GamebookEditor
@@ -43,6 +54,8 @@ export default async function EditorPage({ params }: Props) {
       initialNodes={nodes ?? []}
       initialChoices={choices ?? []}
       initialCombatConfigs={combatConfigs}
+      initialItems={items}
+      initialNodeItems={nodeItems}
     />
   )
 }
