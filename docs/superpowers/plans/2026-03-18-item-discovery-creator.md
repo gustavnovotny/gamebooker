@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 15 App Router, Supabase client SDK, React hooks, TypeScript, Tailwind CSS
 
+**Known duplication:** `STAT_ATTRIBUTES` constant is defined in both `ItemAssignmentPanel.tsx` and `ItemsLibraryModal.tsx`. This is intentional for now — extraction to a shared file can be done in a follow-up refactor.
+
 **Spec:** `docs/superpowers/specs/2026-03-18-item-discovery-creator-design.md`
 
 ---
@@ -58,9 +60,15 @@
 
   const choices = (rawChoices as Choice[]) ?? []
   const combatConfigs = (rawCombatConfigs as CombatConfig[]) ?? []
-  const items = (rawItems as import('@/lib/supabase/types').Item[]) ?? []
-  const nodeItems = (rawNodeItems as import('@/lib/supabase/types').NodeItem[]) ?? []
+  const items = (rawItems as Item[]) ?? []
+  const nodeItems = (rawNodeItems as NodeItem[]) ?? []
   ```
+
+  Also add `Item` and `NodeItem` to the existing named import at the top of the file (line 4):
+  ```typescript
+  import type { Gamebook, Node, Choice, Item, NodeItem } from '@/lib/supabase/types'
+  ```
+  Remove the existing inline `import('@/lib/supabase/types').CombatConfig` cast on the `combatConfigs` line and replace with a top-level import of `CombatConfig` the same way.
 
 - [ ] **Step 3: Pass new props to GamebookEditor**
 
@@ -145,17 +153,27 @@
 
 - [ ] **Step 5: Add handleAssignItem and handleUnassignItem**
 
+  Use a `useRef` to hold the current `nodeItems` value for the duplicate guard. This avoids adding `nodeItems` to `handleAssignItem`'s `useCallback` dependency array, which would create a new function reference on every assignment and invalidate all child memoization.
+
+  Add near the top of the component (after the state declarations):
+  ```typescript
+  const nodeItemsRef = useRef(nodeItems)
+  useEffect(() => { nodeItemsRef.current = nodeItems }, [nodeItems])
+  ```
+
+  Add import `useRef` and `useEffect` to the React import at the top of `GamebookEditor.tsx` (they may already be there — check first).
+
   ```typescript
   const handleAssignItem = useCallback(async (
     nodeId: string, itemId: string
   ): Promise<void> => {
-    // Guard: prevent duplicate assignment
-    if (nodeItems.some((ni) => ni.node_id === nodeId && ni.item_id === itemId)) return
+    // Guard: prevent duplicate (check ref to avoid stale closure without dep array churn)
+    if (nodeItemsRef.current.some((ni) => ni.node_id === nodeId && ni.item_id === itemId)) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('node_items') as any)
       .insert({ node_id: nodeId, item_id: itemId })
     setNodeItems((prev) => [...prev, { node_id: nodeId, item_id: itemId }])
-  }, [supabase, nodeItems])
+  }, [supabase])
 
   const handleUnassignItem = useCallback(async (
     nodeId: string, itemId: string
@@ -212,11 +230,13 @@
   ```
   Expected: only errors about `items`/`nodeItems` props not yet passed to `NodeDetailPanel` and `ItemsLibraryModal` not yet imported. No logic errors.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Commit page.tsx only**
+
+  At this point `GamebookEditor.tsx` has known prop errors (item props not yet passed to `NodeDetailPanel`). Commit only the page file now; `GamebookEditor.tsx` will be committed in Task 4 after the wiring is complete.
 
   ```bash
-  git add src/app/tvorit/\[id\]/page.tsx src/components/creator/editor/GamebookEditor.tsx
-  git commit -m "feat: add items/nodeItems state and handlers to GamebookEditor"
+  git add src/app/tvorit/\[id\]/page.tsx
+  git commit -m "feat: fetch items and node_items in editor page"
   ```
 
 ---
@@ -237,7 +257,7 @@ This component renders inside `NodeDetailPanel` for `item_discovery` nodes. It s
   import { Button } from '@/components/ui/button'
   import { Input } from '@/components/ui/input'
   import { Label } from '@/components/ui/label'
-  import { Save, Trash2, Plus, X } from 'lucide-react'
+  import { Pencil, Trash2, Plus, X, Save } from 'lucide-react'
   import type { Item, StatAttribute } from '@/lib/supabase/types'
 
   const STAT_ATTRIBUTES: { value: StatAttribute; label: string }[] = [
@@ -397,7 +417,7 @@ This component renders inside `NodeDetailPanel` for `item_discovery` nodes. It s
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <Button size="icon-sm" variant="ghost" onClick={() => setEditingItemId(item.id)}>
-                    <Save className="w-3 h-3" />
+                    <Pencil className="w-3 h-3" />
                   </Button>
                   <Button size="icon-sm" variant="ghost" onClick={() => onUnassignItem(item.id)}>
                     <Trash2 className="w-3 h-3 text-red-500" />
@@ -568,8 +588,10 @@ This component renders inside `NodeDetailPanel` for `item_discovery` nodes. It s
   ```tsx
   assignedItems={nodeItems
     .filter((ni) => ni.node_id === selectedNode.id)
-    .map((ni) => items.find((i) => i.id === ni.item_id)!)
-    .filter(Boolean)}
+    .flatMap((ni) => {
+      const item = items.find((i) => i.id === ni.item_id)
+      return item ? [item] : []
+    })}
   allGamebookItems={items}
   onAssignItem={(itemId) => handleAssignItem(selectedNode.id, itemId)}
   onUnassignItem={(itemId) => handleUnassignItem(selectedNode.id, itemId)}
@@ -585,6 +607,8 @@ This component renders inside `NodeDetailPanel` for `item_discovery` nodes. It s
   Expected: no TypeScript errors.
 
 - [ ] **Step 6: Commit**
+
+  This is the first clean commit for `GamebookEditor.tsx` (all prop errors are now resolved).
 
   ```bash
   git add src/components/creator/editor/NodeDetailPanel.tsx src/components/creator/editor/GamebookEditor.tsx
@@ -843,7 +867,7 @@ This component renders inside `NodeDetailPanel` for `item_discovery` nodes. It s
 
 - [ ] **Step 2: Render modal conditionally**
 
-  Inside the `return (...)` JSX, at the bottom (after the brainstorm panel), add:
+  Inside the `return (...)` JSX, add the modal as a **sibling** to the `{showBrainstorm && ...}` block — NOT nested inside it. Place it after the brainstorm panel block, still inside the outermost `<div className="h-screen flex flex-col">`:
 
   ```tsx
   {showItemsLibrary && (
