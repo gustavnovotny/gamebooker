@@ -1084,6 +1084,8 @@ git commit -m "feat: add ItemDiscoveryNodeView with auto-pickup and toast"
 
 The combat logic (`resolveRound`, `resolveLuck`, `computeItemBonus`) is exported from `CombatView.tsx` and tested as pure functions — no DOM needed for the core mechanics tests.
 
+> **Note on `phase` enum:** The spec's local-state box lists `'idle' | 'rolling' | 'result' | 'victory' | 'defeat'`. This plan intentionally replaces that with `'idle' | 'luck_prompt' | 'victory' | 'defeat'` — `'rolling'`/`'result'` are unused intermediary phases that add no value; `'luck_prompt'` captures the distinct "player lost a round, luck available" state. The plan's type definition takes precedence over the spec.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `src/components/reader/CombatView.test.tsx`:
