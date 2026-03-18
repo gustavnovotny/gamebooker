@@ -243,6 +243,16 @@ export default function GamebookEditor({
 
     setNodes(insertedNodes as Node[])
     setChoices((insertedChoices ?? []) as Choice[])
+
+    // Persist story foundation extracted from the brainstorm conversation
+    if (outline.story_foundation) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from('gamebooks') as any)
+        .update({ description: outline.story_foundation })
+        .eq('id', gamebook.id)
+      setStoryFoundation(outline.story_foundation)
+    }
+
     setShowBrainstorm(false)
   }, [gamebook.id, supabase])
 

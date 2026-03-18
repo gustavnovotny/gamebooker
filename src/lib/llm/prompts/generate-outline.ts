@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const OUTLINE_SYSTEM_PROMPT = `Jsi expert na strukturu gamebooků. Dostaneš "Základ příběhu" a vygeneruješ strukturu gamebooku jako JSON.
+export const OUTLINE_SYSTEM_PROMPT = `Jsi expert na tvorbu gamebooků. Dostaneš přepis brainstormovací konverzace a vygeneruješ strukturu gamebooku jako JSON.
 
 Gamebook je dirigovaný graf uzlů. Každý uzel je část příběhu. Uzly jsou propojeny volbami čtenáře.
 
@@ -20,6 +20,7 @@ Pravidla pro strukturu:
 Vrať POUZE validní JSON v přesně tomto formátu (žádný markdown, žádné bloky kódu):
 
 {
+  "story_foundation": "2–4 věty shrnující: svět/prostředí, tón příběhu (humorný/temný/dobrodružný…), cílová skupina (věk, typ čtenáře), hlavní témata a motiv hrdiny. Toto shrnutí bude použito při generování každého uzlu.",
   "nodes": [
     {
       "id": "node_01",
@@ -65,6 +66,7 @@ export const OutlineChoiceSchema = z.object({
 })
 
 export const OutlineSchema = z.object({
+  story_foundation: z.string().default(''),
   nodes: z.array(OutlineNodeSchema),
   choices: z.array(OutlineChoiceSchema),
   suggested_items: z.array(z.object({
