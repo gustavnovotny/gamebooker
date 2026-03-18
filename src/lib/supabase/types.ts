@@ -21,6 +21,7 @@ export interface Node {
   gamebook_id: string
   type: NodeType
   title: string
+  summary: string
   content: string
   is_start: boolean
   x: number

@@ -42,6 +42,7 @@ export default function NodeDetailPanel({
   isGenerating = false,
 }: NodeDetailPanelProps) {
   const [title, setTitle] = useState(node.title)
+  const [summary, setSummary] = useState(node.summary)
   const [content, setContent] = useState(node.content)
   const [newNodeType, setNewNodeType] = useState<NodeType>('story')
   const [newNodeTitle, setNewNodeTitle] = useState('')
@@ -54,7 +55,7 @@ export default function NodeDetailPanel({
   }, [node.content])
 
   function handleSave() {
-    onSave({ ...node, title, content })
+    onSave({ ...node, title, summary, content })
   }
 
   async function handleAddNode() {
@@ -88,8 +89,19 @@ export default function NodeDetailPanel({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="node-summary">Osnova</Label>
+        <textarea
+          id="node-summary"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          className="w-full h-20 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Co se v tomto uzlu děje — v bodech nebo větách. Řídí generování AI textu."
+        />
+      </div>
+
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="node-content">Text příběhu</Label>
+          <Label htmlFor="node-content">Vygenerovaný text</Label>
           <Button
             variant="ghost"
             size="sm"
@@ -104,8 +116,8 @@ export default function NodeDetailPanel({
           id="node-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="w-full h-32 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="Text příběhu pro čtenáře…"
+          className="w-full h-28 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+          placeholder="Text se vygeneruje z osnovy…"
         />
       </div>
 

@@ -39,7 +39,7 @@ export default function GamebookEditor({
   const handleSaveNode = useCallback(async (updatedNode: Node) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('nodes') as any)
-      .update({ title: updatedNode.title, content: updatedNode.content })
+      .update({ title: updatedNode.title, summary: updatedNode.summary, content: updatedNode.content })
       .eq('id', updatedNode.id)
 
     setNodes((prev) => prev.map((n) => n.id === updatedNode.id ? updatedNode : n))
@@ -58,23 +58,37 @@ export default function GamebookEditor({
 
     setIsGenerating(true)
 
-    // Incoming: choices leading TO this node + their source nodes
-    const incomingChoices = choices.filter((c) => c.to_node_id === nodeId)
-    const incomingContext = incomingChoices.map((c) => {
-      const fromNode = nodes.find((n) => n.id === c.from_node_id)
+    // Build ancestor chain going 2 levels back.
+    // Each ancestor: the node + the choice text that leads FORWARD from it.
+    type AncestorEntry = { nodeId: string; choiceTextLeadingForward: string }
+    const buildAncestors = (targetId: string, depth: number): AncestorEntry[] => {
+      if (depth === 0) return []
+      const incoming = choices.filter((c) => c.to_node_id === targetId)
+      if (incoming.length === 0) return []
+      // Pick first incoming path (most common case; branching handled by per-node generation)
+      const choice = incoming[0]
+      const deeper = buildAncestors(choice.from_node_id, depth - 1)
+      return [...deeper, { nodeId: choice.from_node_id, choiceTextLeadingForward: choice.text }]
+    }
+
+    const ancestorEntries = buildAncestors(nodeId, 2)
+    const ancestors = ancestorEntries.map((entry) => {
+      const n = nodes.find((nd) => nd.id === entry.nodeId)
       return {
-        choiceText: c.text,
-        fromNodeTitle: fromNode?.title ?? '',
-        fromNodeContent: fromNode?.content ?? '',
+        nodeTitle: n?.title ?? '',
+        nodeSummary: n?.summary ?? '',
+        nodeContent: n?.content ?? '',
+        choiceTextLeadingForward: entry.choiceTextLeadingForward,
       }
     })
 
-    // Outgoing: choices leaving FROM this node + their target nodes
-    const outgoingChoices = choices.filter((c) => c.from_node_id === nodeId)
-    const outgoingNodes = outgoingChoices.map((c) => {
-      const toNode = nodes.find((n) => n.id === c.to_node_id)
-      return { title: toNode?.title ?? '', content: toNode?.content ?? '' }
-    })
+    // Outgoing: direct children
+    const outgoingNodes = choices
+      .filter((c) => c.from_node_id === nodeId)
+      .map((c) => {
+        const toNode = nodes.find((n) => n.id === c.to_node_id)
+        return { title: toNode?.title ?? '', summary: toNode?.summary ?? '' }
+      })
 
     const response = await fetch('/api/ai/generate-node-text', {
       method: 'POST',
@@ -82,9 +96,10 @@ export default function GamebookEditor({
       body: JSON.stringify({
         nodeType: node.type,
         nodeTitle: node.title,
+        nodeSummary: node.summary ?? '',
         gamebookTitle: gamebook.title,
         storyFoundation,
-        incomingContext,
+        ancestors,
         outgoingNodes,
       }),
     })
@@ -192,7 +207,8 @@ export default function GamebookEditor({
       gamebook_id: gamebook.id,
       type: n.type,
       title: n.title,
-      content: n.summary,
+      summary: n.summary,
+      content: '',
       is_start: n.is_start,
       x: (i % COLS) * X_GAP,
       y: Math.floor(i / COLS) * Y_GAP,
