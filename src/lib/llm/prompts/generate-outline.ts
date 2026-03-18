@@ -11,15 +11,42 @@ Typy uzlů:
 - "ending": konec příběhu (dobrý nebo špatný)
 
 Pravidla pro strukturu:
-- Vytvoř 15–25 uzlů celkem
+- Vytvoř 10–15 uzlů celkem (ne více, kvůli délce odpovědi)
 - Musí být právě JEDEN startovní uzel (is_start: true)
 - Musí být alespoň 2 různé konce (ending uzly)
 - Každý story/combat/item_discovery uzel musí mít alespoň 1 odchozí volbu
-- Hlavní příběhová linka = 8–12 uzlů
-- Přidej 1–2 vedlejší větve (side questy nebo alternativní cesty)
 - Přidej alespoň 1 combat uzel a alespoň 1 item_discovery uzel
 
-Vrať POUZE validní JSON bez jakéhokoliv dalšího textu nebo markdown formátování.`
+Vrať POUZE validní JSON v přesně tomto formátu (žádný markdown, žádné bloky kódu):
+
+{
+  "nodes": [
+    {
+      "id": "node_01",
+      "type": "story",
+      "title": "Krátký název uzlu",
+      "summary": "Jedno nebo dvě věty popisující co se v uzlu děje.",
+      "is_start": true
+    }
+  ],
+  "choices": [
+    {
+      "from_node_id": "node_01",
+      "to_node_id": "node_02",
+      "text": "Text volby kterou čtenář vidí"
+    }
+  ],
+  "suggested_items": [
+    {
+      "name": "Název předmětu",
+      "description": "Popis předmětu",
+      "stat_bonus_attribute": null,
+      "stat_bonus_value": 0
+    }
+  ]
+}
+
+DŮLEŽITÉ: "choices" je samostatné pole na vrchní úrovni JSON, NE součást každého uzlu.`
 
 export const OutlineNodeSchema = z.object({
   id: z.string(),
