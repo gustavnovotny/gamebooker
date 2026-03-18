@@ -5,9 +5,11 @@ import NodeGraph from './NodeGraph'
 import NodeDetailPanel from './NodeDetailPanel'
 import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Node, Choice, Gamebook } from '@/lib/supabase/types'
 import type { OutlineData } from '@/lib/llm/prompts/generate-outline'
+import { ChevronLeft } from 'lucide-react'
 
 interface GamebookEditorProps {
   gamebook: Gamebook
@@ -148,7 +150,12 @@ export default function GamebookEditor({
     <div className="h-screen flex flex-col">
       {/* Editor header */}
       <header className="border-b bg-white px-4 py-3 flex items-center justify-between shrink-0">
-        <h1 className="font-bold text-slate-900">{gamebook.title}</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/tvorit" className="text-slate-400 hover:text-slate-700 transition-colors">
+            <ChevronLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="font-bold text-slate-900">{gamebook.title}</h1>
+        </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowBrainstorm((v) => !v)}
