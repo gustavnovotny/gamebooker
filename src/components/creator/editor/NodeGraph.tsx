@@ -5,9 +5,10 @@ import {
   ReactFlow,
   Background,
   Controls,
-  addEdge,
   useNodesState,
   useEdgesState,
+  type NodeChange,
+  type EdgeChange,
   type Node as RFNode,
   type Edge,
   type Connection,
@@ -26,18 +27,24 @@ interface NodeGraphProps {
   nodes: Node[]
   choices: Choice[]
   selectedNodeId: string | null
+  selectedChoiceId: string | null
   onNodeSelect: (nodeId: string) => void
+  onChoiceSelect: (choiceId: string) => void
   onNodePositionChange: (nodeId: string, x: number, y: number) => void
-  onChoicesChange: (choices: Choice[]) => void
+  onNewConnection: (fromNodeId: string, toNodeId: string) => void
+  onDeleteChoice: (choiceId: string) => void
 }
 
 export default function NodeGraph({
   nodes,
   choices,
   selectedNodeId,
+  selectedChoiceId,
   onNodeSelect,
+  onChoiceSelect,
   onNodePositionChange,
-  onChoicesChange,
+  onNewConnection,
+  onDeleteChoice,
 }: NodeGraphProps) {
   const rfNodes: RFNode[] = useMemo(() =>
     nodes.map((n) => ({
@@ -63,10 +70,11 @@ export default function NodeGraph({
       id: c.id,
       source: c.from_node_id,
       target: c.to_node_id,
-      label: c.text,
+      label: c.text || '(bez textu)',
       animated: false,
+      selected: c.id === selectedChoiceId,
     })),
-  [choices])
+  [choices, selectedChoiceId])
 
   const [rfNodesState, setRfNodesState, onRFNodesChange] = useNodesState(rfNodes)
   const [rfEdgesState, setEdges, onRFEdgesChange] = useEdgesState(rfEdges)
@@ -82,9 +90,21 @@ export default function NodeGraph({
 
   const onConnect = useCallback(
     (params: Connection) => {
-      setEdges((eds) => addEdge(params, eds))
+      if (params.source && params.target) {
+        onNewConnection(params.source, params.target)
+      }
     },
-    [setEdges]
+    [onNewConnection]
+  )
+
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      onRFEdgesChange(changes)
+      changes.forEach((change) => {
+        if (change.type === 'remove') onDeleteChoice(change.id)
+      })
+    },
+    [onRFEdgesChange, onDeleteChoice]
   )
 
   // Persist node positions after drag
@@ -101,9 +121,10 @@ export default function NodeGraph({
         nodes={rfNodesState}
         edges={rfEdgesState}
         onNodesChange={onRFNodesChange}
-        onEdgesChange={onRFEdgesChange}
+        onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => onNodeSelect(node.id)}
+        onEdgeClick={(_, edge) => onChoiceSelect(edge.id)}
         onNodeDragStop={onNodeDragStop}
         fitView
       >

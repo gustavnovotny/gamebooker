@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import NodeGraph from './NodeGraph'
 import NodeDetailPanel from './NodeDetailPanel'
+import ChoiceDetailPanel from './ChoiceDetailPanel'
 import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
 import Link from 'next/link'
@@ -25,10 +26,12 @@ export default function GamebookEditor({
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [choices, setChoices] = useState<Choice[]>(initialChoices)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showBrainstorm, setShowBrainstorm] = useState(initialNodes.length === 0)
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
+  const selectedChoice = choices.find((c) => c.id === selectedChoiceId) ?? null
   const supabase = createClient()
 
   const handleSaveNode = useCallback(async (updatedNode: Node) => {
@@ -91,6 +94,31 @@ export default function GamebookEditor({
     await (supabase.from('nodes') as any).update({ content: text }).eq('id', nodeId)
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
+
+  const handleNewConnection = useCallback(async (fromNodeId: string, toNodeId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newChoice } = await (supabase.from('choices') as any)
+      .insert({ from_node_id: fromNodeId, to_node_id: toNodeId, text: '', condition_item_id: null })
+      .select()
+      .single()
+    if (!newChoice) return
+    setChoices((prev) => [...prev, newChoice as Choice])
+    setSelectedChoiceId(newChoice.id)
+    setSelectedNodeId(null)
+  }, [supabase])
+
+  const handleSaveChoice = useCallback(async (updated: Choice) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('choices') as any).update({ text: updated.text }).eq('id', updated.id)
+    setChoices((prev) => prev.map((c) => c.id === updated.id ? updated : c))
+  }, [supabase])
+
+  const handleDeleteChoice = useCallback(async (choiceId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('choices') as any).delete().eq('id', choiceId)
+    setChoices((prev) => prev.filter((c) => c.id !== choiceId))
+    setSelectedChoiceId(null)
+  }, [supabase])
 
   const handleAddNode = useCallback(async (
     fromNodeId: string,
@@ -214,24 +242,40 @@ export default function GamebookEditor({
             nodes={nodes}
             choices={choices}
             selectedNodeId={selectedNodeId}
-            onNodeSelect={setSelectedNodeId}
+            selectedChoiceId={selectedChoiceId}
+            onNodeSelect={(id) => { setSelectedNodeId(id); setSelectedChoiceId(null) }}
+            onChoiceSelect={(id) => { setSelectedChoiceId(id); setSelectedNodeId(null) }}
             onNodePositionChange={handleNodePositionChange}
-            onChoicesChange={setChoices}
+            onNewConnection={handleNewConnection}
+            onDeleteChoice={handleDeleteChoice}
           />
         </div>
 
-        {/* Right panel: node detail */}
-        {selectedNode && (
+        {/* Right panel: node or choice detail */}
+        {(selectedNode || selectedChoice) && (
           <div className="w-80 border-l bg-white shrink-0">
-            <NodeDetailPanel
-              key={selectedNode.id}
-              node={selectedNode}
-              onSave={handleSaveNode}
-              onGenerateText={handleGenerateText}
-              onClose={() => setSelectedNodeId(null)}
-              onAddNode={handleAddNode}
-              isGenerating={isGenerating}
-            />
+            {selectedNode && (
+              <NodeDetailPanel
+                key={selectedNode.id}
+                node={selectedNode}
+                onSave={handleSaveNode}
+                onGenerateText={handleGenerateText}
+                onClose={() => setSelectedNodeId(null)}
+                onAddNode={handleAddNode}
+                isGenerating={isGenerating}
+              />
+            )}
+            {selectedChoice && (
+              <ChoiceDetailPanel
+                key={selectedChoice.id}
+                choice={selectedChoice}
+                fromNode={nodes.find((n) => n.id === selectedChoice.from_node_id) ?? null}
+                toNode={nodes.find((n) => n.id === selectedChoice.to_node_id) ?? null}
+                onSave={handleSaveChoice}
+                onDelete={handleDeleteChoice}
+                onClose={() => setSelectedChoiceId(null)}
+              />
+            )}
           </div>
         )}
       </div>
