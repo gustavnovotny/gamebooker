@@ -12,7 +12,7 @@ Styl psaní:
 Vrať POUZE text uzlu bez jakéhokoliv formátování nebo vysvětlení.`
 
 export interface NodeTextContext {
-  nodeType: string
+  nodeType: 'story' | 'combat' | 'item_discovery' | 'ending'
   nodeTitle: string
   nodeSummary: string
   gamebookTitle: string

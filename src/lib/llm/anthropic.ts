@@ -17,6 +17,7 @@ export class AnthropicProvider implements LLMProvider {
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: options.maxTokens ?? 2048,
+      temperature: options.temperature,
       system: systemMessage?.content,
       messages: userMessages.map((m) => ({
         role: m.role as 'user' | 'assistant',
@@ -34,6 +35,7 @@ export class AnthropicProvider implements LLMProvider {
     const stream = await this.client.messages.stream({
       model: this.model,
       max_tokens: options.maxTokens ?? 2048,
+      temperature: options.temperature,
       system: systemMessage?.content,
       messages: userMessages.map((m) => ({
         role: m.role as 'user' | 'assistant',
