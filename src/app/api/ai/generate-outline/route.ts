@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
 
   let parsed
   try {
-    parsed = OutlineSchema.parse(JSON.parse(raw))
-  } catch {
+    // Strip markdown code fences LLMs sometimes add despite instructions
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+    parsed = OutlineSchema.parse(JSON.parse(cleaned))
+  } catch (e) {
+    console.error('[generate-outline] parse error:', e, '\nraw response:', raw)
     return NextResponse.json(
       { error: 'AI vrátila neplatnou strukturu. Zkuste to prosím znovu.' },
       { status: 422 }

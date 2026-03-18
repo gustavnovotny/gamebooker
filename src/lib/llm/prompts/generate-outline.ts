@@ -45,7 +45,7 @@ export const OutlineSchema = z.object({
     description: z.string(),
     stat_bonus_attribute: z.enum(['sila', 'inteligence', 'obratnost', 'stesti']).nullable().default(null),
     stat_bonus_value: z.number().default(0),
-  })),
+  })).default([]),
 })
 
 export type OutlineData = z.infer<typeof OutlineSchema>
