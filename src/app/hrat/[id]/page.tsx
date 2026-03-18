@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import type { Gamebook } from '@/lib/supabase/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -9,12 +10,14 @@ export default async function HratPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: gamebook } = await supabase
+  const { data } = await supabase
     .from('gamebooks')
     .select('*')
     .eq('id', id)
     .eq('status', 'published')
     .single()
+
+  const gamebook = data as Gamebook | null
 
   if (!gamebook) {
     notFound()
