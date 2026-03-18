@@ -24,10 +24,10 @@ export default async function EditorPage({ params }: Props) {
   if (!gamebook) notFound()
 
   // Choices depend on node IDs, so fetched after nodes
-  const { data: rawChoices } = await supabase
-    .from('choices')
-    .select('*')
-    .in('from_node_id', nodes.map((n) => n.id))
+  const nodeIds = nodes.map((n) => n.id)
+  const { data: rawChoices } = nodeIds.length > 0
+    ? await supabase.from('choices').select('*').in('from_node_id', nodeIds)
+    : { data: [] }
 
   const choices = (rawChoices as Choice[]) ?? []
 

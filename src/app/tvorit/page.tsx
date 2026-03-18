@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import GamebookList from '@/components/creator/dashboard/GamebookList'
 import CreateGamebookButton from '@/components/creator/dashboard/CreateGamebookButton'
 import { BookOpen, LogOut } from 'lucide-react'
@@ -9,6 +10,7 @@ export const metadata = { title: 'Moje gamebooky — Gamebooker' }
 export default async function TvoritPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/prihlasit')
 
   const { data: gamebooks } = await supabase
     .from('gamebooks')
