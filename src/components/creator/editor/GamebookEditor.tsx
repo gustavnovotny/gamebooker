@@ -28,6 +28,7 @@ export default function GamebookEditor({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [streamingContent, setStreamingContent] = useState<string | null>(null)
   const [showBrainstorm, setShowBrainstorm] = useState(initialNodes.length === 0)
   const [storyFoundation, setStoryFoundation] = useState(gamebook.description ?? '')
   const [editingFoundation, setEditingFoundation] = useState(false)
@@ -113,19 +114,18 @@ export default function GamebookEditor({
     const decoder = new TextDecoder()
     let text = ''
 
-    setNodes((prev) => prev.map((n) => n.id === nodeId ? { ...n, content: '' } : n))
+    setStreamingContent('')
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       text += decoder.decode(value, { stream: true })
-      const captured = text
-      setNodes((prev) =>
-        prev.map((n) => n.id === nodeId ? { ...n, content: captured } : n)
-      )
+      setStreamingContent(text)
     }
 
-    // Persist to DB
+    // Streaming done — update nodes state once and persist
+    setNodes((prev) => prev.map((n) => n.id === nodeId ? { ...n, content: text } : n))
+    setStreamingContent(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('nodes') as any).update({ content: text }).eq('id', nodeId)
     setIsGenerating(false)
@@ -332,6 +332,7 @@ export default function GamebookEditor({
                 onClose={() => setSelectedNodeId(null)}
                 onAddNode={handleAddNode}
                 isGenerating={isGenerating}
+                streamingContent={streamingContent}
               />
             )}
             {selectedChoice && (

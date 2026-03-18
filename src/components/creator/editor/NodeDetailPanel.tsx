@@ -15,6 +15,7 @@ interface NodeDetailPanelProps {
   onClose: () => void
   onAddNode: (fromNodeId: string, type: NodeType, title: string, choiceText: string) => void
   isGenerating?: boolean
+  streamingContent?: string | null
 }
 
 const TYPE_LABELS: Record<NodeType, string> = {
@@ -40,6 +41,7 @@ export default function NodeDetailPanel({
   onClose,
   onAddNode,
   isGenerating = false,
+  streamingContent = null,
 }: NodeDetailPanelProps) {
   const [title, setTitle] = useState(node.title)
   const [summary, setSummary] = useState(node.summary)
@@ -49,10 +51,10 @@ export default function NodeDetailPanel({
   const [choiceText, setChoiceText] = useState('')
   const [addingNode, setAddingNode] = useState(false)
 
-  // Sync content when AI generates text (streaming updates node.content in parent)
+  // Sync content when node is saved externally (e.g. after streaming completes)
   useEffect(() => {
-    setContent(node.content)
-  }, [node.content])
+    if (streamingContent === null) setContent(node.content)
+  }, [node.content, streamingContent])
 
   function handleSave() {
     onSave({ ...node, title, summary, content })
@@ -114,10 +116,11 @@ export default function NodeDetailPanel({
         </div>
         <textarea
           id="node-content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+          value={streamingContent ?? content}
+          onChange={(e) => { if (!streamingContent) setContent(e.target.value) }}
           className="w-full h-28 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
           placeholder="Text se vygeneruje z osnovy…"
+          readOnly={streamingContent !== null}
         />
       </div>
 
