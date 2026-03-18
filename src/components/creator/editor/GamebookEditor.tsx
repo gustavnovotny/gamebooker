@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import NodeGraph from './NodeGraph'
 import NodeDetailPanel from './NodeDetailPanel'
 import PublishButton from './PublishButton'
+import BrainstormChat from '../ai/BrainstormChat'
 import { createClient } from '@/lib/supabase/client'
 import type { Node, Choice, Gamebook } from '@/lib/supabase/types'
 
@@ -134,10 +135,15 @@ export default function GamebookEditor({
         )}
       </div>
 
-      {/* Bottom panel: AI brainstorm placeholder */}
+      {/* Bottom panel: AI brainstorm */}
       {showBrainstorm && (
-        <div className="h-72 border-t bg-white shrink-0 flex items-center justify-center text-slate-400 text-sm">
-          AI asistent (načítám…)
+        <div className="h-72 border-t bg-white shrink-0">
+          <BrainstormChat
+            gamebookId={gamebook.id}
+            onOutlineGenerated={(outline) => {
+              console.log('Outline generated:', outline)
+            }}
+          />
         </div>
       )}
     </div>
