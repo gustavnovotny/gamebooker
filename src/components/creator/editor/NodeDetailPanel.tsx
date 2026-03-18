@@ -160,7 +160,6 @@ export default function NodeDetailPanel({
 
       {node.type === 'item_discovery' && (
         <ItemAssignmentPanel
-          nodeId={node.id}
           assignedItems={assignedItems}
           allGamebookItems={allGamebookItems}
           onAssignItem={onAssignItem}

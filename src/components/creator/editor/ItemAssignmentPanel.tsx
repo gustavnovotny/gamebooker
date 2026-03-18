@@ -15,7 +15,6 @@ const STAT_ATTRIBUTES: { value: StatAttribute; label: string }[] = [
 ]
 
 interface ItemAssignmentPanelProps {
-  nodeId: string
   assignedItems: Item[]
   allGamebookItems: Item[]
   onAssignItem: (itemId: string) => Promise<void>
@@ -90,7 +89,6 @@ function ItemEditForm({
 }
 
 export default function ItemAssignmentPanel({
-  nodeId: _nodeId,
   assignedItems,
   allGamebookItems,
   onAssignItem,
