@@ -7,6 +7,7 @@ import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
 import { createClient } from '@/lib/supabase/client'
 import type { Node, Choice, Gamebook } from '@/lib/supabase/types'
+import type { OutlineData } from '@/lib/llm/prompts/generate-outline'
 
 interface GamebookEditorProps {
   gamebook: Gamebook
@@ -89,6 +90,54 @@ export default function GamebookEditor({
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
 
+  const handleOutlineGenerated = useCallback(async (outline: OutlineData) => {
+    // Auto-layout nodes in a grid (LLM returns x/y=0)
+    const COLS = 4
+    const X_GAP = 220
+    const Y_GAP = 160
+
+    const nodeInserts = outline.nodes.map((n, i) => ({
+      gamebook_id: gamebook.id,
+      type: n.type,
+      title: n.title,
+      content: n.summary,
+      is_start: n.is_start,
+      x: (i % COLS) * X_GAP,
+      y: Math.floor(i / COLS) * Y_GAP,
+    }))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: insertedNodes } = await (supabase.from('nodes') as any)
+      .insert(nodeInserts)
+      .select()
+
+    if (!insertedNodes?.length) return
+
+    // Map outline temp IDs → Supabase UUIDs (by insertion order)
+    const idMap = new Map<string, string>()
+    outline.nodes.forEach((outlineNode, i) => {
+      if (insertedNodes[i]) idMap.set(outlineNode.id, insertedNodes[i].id)
+    })
+
+    const choiceInserts = outline.choices
+      .filter((c) => idMap.has(c.from_node_id) && idMap.has(c.to_node_id))
+      .map((c) => ({
+        from_node_id: idMap.get(c.from_node_id)!,
+        to_node_id: idMap.get(c.to_node_id)!,
+        text: c.text,
+        condition_item_id: null,
+      }))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: insertedChoices } = await (supabase.from('choices') as any)
+      .insert(choiceInserts)
+      .select()
+
+    setNodes(insertedNodes as Node[])
+    setChoices((insertedChoices ?? []) as Choice[])
+    setShowBrainstorm(false)
+  }, [gamebook.id, supabase])
+
   return (
     <div className="h-screen flex flex-col">
       {/* Editor header */}
@@ -141,9 +190,7 @@ export default function GamebookEditor({
         <div className="h-72 border-t bg-white shrink-0">
           <BrainstormChat
             gamebookId={gamebook.id}
-            onOutlineGenerated={(outline) => {
-              console.log('Outline generated:', outline)
-            }}
+            onOutlineGenerated={handleOutlineGenerated}
           />
         </div>
       )}
