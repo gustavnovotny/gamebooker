@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import GamebookCard from '@/components/library/GamebookCard'
 import { BookOpen } from 'lucide-react'
 import Link from 'next/link'
+import type { Gamebook } from '@/lib/supabase/types'
 
 export const metadata = { title: 'Gamebooker — Čti a hraj gamebooky' }
 
@@ -9,11 +10,13 @@ export default async function LibraryPage() {
   const supabase = await createClient()
 
   // Fetch published gamebooks with node counts
-  const { data: gamebooks } = await supabase
+  const { data } = await supabase
     .from('gamebooks')
     .select('*')
     .eq('status', 'published')
     .order('created_at', { ascending: false })
+
+  const gamebooks = data as Gamebook[] | null
 
   // Fetch node counts for all published gamebooks
   const nodeCounts: Record<string, number> = {}

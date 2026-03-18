@@ -16,7 +16,9 @@ export default async function HratPage({ params }: Props) {
     .eq('status', 'published')
     .single()
 
-  if (!gamebook) notFound()
+  if (!gamebook) {
+    notFound()
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 p-8">

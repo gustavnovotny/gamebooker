@@ -67,12 +67,16 @@ export interface CombatConfig {
 export interface Database {
   public: {
     Tables: {
-      gamebooks: { Row: Gamebook; Insert: Omit<Gamebook, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Gamebook, 'id'>> }
-      nodes: { Row: Node; Insert: Omit<Node, 'id'>; Update: Partial<Omit<Node, 'id'>> }
-      choices: { Row: Choice; Insert: Omit<Choice, 'id'>; Update: Partial<Omit<Choice, 'id'>> }
-      items: { Row: Item; Insert: Omit<Item, 'id'>; Update: Partial<Omit<Item, 'id'>> }
-      node_items: { Row: NodeItem; Insert: NodeItem; Update: NodeItem }
-      combat_configs: { Row: CombatConfig; Insert: Omit<CombatConfig, 'id'>; Update: Partial<Omit<CombatConfig, 'id'>> }
+      gamebooks: { Row: Gamebook; Insert: Omit<Gamebook, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Gamebook, 'id'>>; Relationships: [] }
+      nodes: { Row: Node; Insert: Omit<Node, 'id'>; Update: Partial<Omit<Node, 'id'>>; Relationships: [] }
+      choices: { Row: Choice; Insert: Omit<Choice, 'id'>; Update: Partial<Omit<Choice, 'id'>>; Relationships: [] }
+      items: { Row: Item; Insert: Omit<Item, 'id'>; Update: Partial<Omit<Item, 'id'>>; Relationships: [] }
+      node_items: { Row: NodeItem; Insert: NodeItem; Update: NodeItem; Relationships: [] }
+      combat_configs: { Row: CombatConfig; Insert: Omit<CombatConfig, 'id'>; Update: Partial<Omit<CombatConfig, 'id'>>; Relationships: [] }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
