@@ -5,33 +5,48 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import type { Node } from '@/lib/supabase/types'
-import { Sparkles, Save, X } from 'lucide-react'
+import type { Node, NodeType } from '@/lib/supabase/types'
+import { Sparkles, Save, X, Plus } from 'lucide-react'
 
 interface NodeDetailPanelProps {
   node: Node
   onSave: (node: Node) => void
   onGenerateText: (nodeId: string) => void
   onClose: () => void
+  onAddNode: (fromNodeId: string, type: NodeType, title: string, choiceText: string) => void
   isGenerating?: boolean
 }
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<NodeType, string> = {
   story: 'Příběh',
   combat: 'Souboj',
   item_discovery: 'Předmět',
   ending: 'Konec',
 }
 
+const TYPE_COLORS: Record<NodeType, string> = {
+  story: 'bg-indigo-100 text-indigo-800 border-indigo-300 hover:bg-indigo-200',
+  combat: 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200',
+  item_discovery: 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200',
+  ending: 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200',
+}
+
+const NODE_TYPES: NodeType[] = ['story', 'combat', 'item_discovery', 'ending']
+
 export default function NodeDetailPanel({
   node,
   onSave,
   onGenerateText,
   onClose,
+  onAddNode,
   isGenerating = false,
 }: NodeDetailPanelProps) {
   const [title, setTitle] = useState(node.title)
   const [content, setContent] = useState(node.content)
+  const [newNodeType, setNewNodeType] = useState<NodeType>('story')
+  const [newNodeTitle, setNewNodeTitle] = useState('')
+  const [choiceText, setChoiceText] = useState('')
+  const [addingNode, setAddingNode] = useState(false)
 
   // Sync content when AI generates text (streaming updates node.content in parent)
   useEffect(() => {
@@ -40,6 +55,15 @@ export default function NodeDetailPanel({
 
   function handleSave() {
     onSave({ ...node, title, content })
+  }
+
+  async function handleAddNode() {
+    if (!newNodeTitle.trim() || !choiceText.trim()) return
+    setAddingNode(true)
+    await onAddNode(node.id, newNodeType, newNodeTitle.trim(), choiceText.trim())
+    setNewNodeTitle('')
+    setChoiceText('')
+    setAddingNode(false)
   }
 
   return (
@@ -63,7 +87,7 @@ export default function NodeDetailPanel({
         />
       </div>
 
-      <div className="space-y-2 flex-1">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="node-content">Text příběhu</Label>
           <Button
@@ -80,7 +104,7 @@ export default function NodeDetailPanel({
           id="node-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="w-full h-48 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full h-32 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Text příběhu pro čtenáře…"
         />
       </div>
@@ -89,6 +113,59 @@ export default function NodeDetailPanel({
         <Save className="w-4 h-4 mr-2" />
         Uložit uzel
       </Button>
+
+      {node.type !== 'ending' && (
+        <>
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Přidat navazující uzel</p>
+
+            <div className="grid grid-cols-2 gap-1">
+              {NODE_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setNewNodeType(type)}
+                  className={`text-xs px-2 py-1.5 rounded border font-medium transition-colors ${TYPE_COLORS[type]} ${newNodeType === type ? 'ring-2 ring-offset-1 ring-slate-400' : ''}`}
+                >
+                  {TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="new-node-title" className="text-xs">Název nového uzlu</Label>
+              <Input
+                id="new-node-title"
+                value={newNodeTitle}
+                onChange={(e) => setNewNodeTitle(e.target.value)}
+                placeholder="Příjezd do vesnice…"
+                className="text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="choice-text" className="text-xs">Text volby (co čtenář uvidí)</Label>
+              <Input
+                id="choice-text"
+                value={choiceText}
+                onChange={(e) => setChoiceText(e.target.value)}
+                placeholder="Vydat se do lesa…"
+                className="text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddNode()}
+              />
+            </div>
+
+            <Button
+              onClick={handleAddNode}
+              disabled={!newNodeTitle.trim() || !choiceText.trim() || addingNode}
+              variant="outline"
+              className="w-full"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {addingNode ? 'Přidávám…' : 'Přidat uzel'}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

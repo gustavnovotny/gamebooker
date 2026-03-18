@@ -7,7 +7,7 @@ import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { Node, Choice, Gamebook } from '@/lib/supabase/types'
+import type { Node, Choice, Gamebook, NodeType } from '@/lib/supabase/types'
 import type { OutlineData } from '@/lib/llm/prompts/generate-outline'
 import { ChevronLeft } from 'lucide-react'
 
@@ -91,6 +91,41 @@ export default function GamebookEditor({
     await (supabase.from('nodes') as any).update({ content: text }).eq('id', nodeId)
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
+
+  const handleAddNode = useCallback(async (
+    fromNodeId: string,
+    type: NodeType,
+    title: string,
+    choiceText: string,
+  ) => {
+    const fromNode = nodes.find((n) => n.id === fromNodeId)
+    if (!fromNode) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newNode } = await (supabase.from('nodes') as any)
+      .insert({
+        gamebook_id: gamebook.id,
+        type,
+        title,
+        content: '',
+        is_start: false,
+        x: fromNode.x + 50,
+        y: fromNode.y + 160,
+      })
+      .select()
+      .single()
+
+    if (!newNode) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newChoice } = await (supabase.from('choices') as any)
+      .insert({ from_node_id: fromNodeId, to_node_id: newNode.id, text: choiceText, condition_item_id: null })
+      .select()
+      .single()
+
+    setNodes((prev) => [...prev, newNode as Node])
+    if (newChoice) setChoices((prev) => [...prev, newChoice as Choice])
+  }, [nodes, gamebook.id, supabase])
 
   const handleNodePositionChange = useCallback(async (nodeId: string, x: number, y: number) => {
     setNodes((prev) => prev.map((n) => n.id === nodeId ? { ...n, x, y } : n))
@@ -194,6 +229,7 @@ export default function GamebookEditor({
               onSave={handleSaveNode}
               onGenerateText={handleGenerateText}
               onClose={() => setSelectedNodeId(null)}
+              onAddNode={handleAddNode}
               isGenerating={isGenerating}
             />
           </div>
