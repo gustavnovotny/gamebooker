@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -68,8 +68,13 @@ export default function NodeGraph({
     })),
   [choices])
 
-  const [rfNodesState, , onRFNodesChange] = useNodesState(rfNodes)
+  const [rfNodesState, setRfNodesState, onRFNodesChange] = useNodesState(rfNodes)
   const [rfEdgesState, setEdges, onRFEdgesChange] = useEdgesState(rfEdges)
+
+  // Sync ReactFlow state when external props change (e.g. node added/removed)
+  useEffect(() => {
+    setRfNodesState(rfNodes)
+  }, [rfNodes, setRfNodesState])
 
   const onConnect = useCallback(
     (params: Connection) => {
