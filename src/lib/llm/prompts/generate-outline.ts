@@ -11,7 +11,7 @@ Typy uzlů:
 - "ending": konec příběhu (dobrý nebo špatný)
 
 Pravidla pro strukturu:
-- Vytvoř 10–15 uzlů celkem (ne více, kvůli délce odpovědi)
+- Vytvoř PŘESNĚ 10–12 uzlů celkem – ne více, odpověď musí být krátká
 - Musí být právě JEDEN startovní uzel (is_start: true)
 - Musí být alespoň 2 různé konce (ending uzly)
 - Každý story/combat/item_discovery uzel musí mít alespoň 1 odchozí volbu

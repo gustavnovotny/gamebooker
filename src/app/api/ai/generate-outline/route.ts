@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const raw = await provider.chat([
     { role: 'system', content: OUTLINE_SYSTEM_PROMPT },
     { role: 'user', content: buildOutlinePrompt(storyFoundation) },
-  ], { temperature: 0.7, maxTokens: 4096 })
+  ], { temperature: 0.7, maxTokens: 8192 })
 
   let parsed
   try {
