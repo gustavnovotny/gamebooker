@@ -40,7 +40,7 @@ interface GameSession {
   gamebookId: string
   currentNodeId: string
   hp: number          // current HP
-  maxHp: number       // always 20
+  maxHp: number       // sila + 10, computed at character creation
   stats: {
     sila: number
     inteligence: number
@@ -77,9 +77,11 @@ Each node page is a Next.js server component that fetches only the current node'
 
 ### `/hrat/[id]/page.tsx` (server component)
 - Fetches gamebook `title` and `description`.
-- Passes to `<GameStartClient>` (client component):
+- Fetches start node: `SELECT id FROM nodes WHERE gamebook_id = id AND is_start = true LIMIT 1`.
+- Passes `startNodeId: string | null` to `<GameStartClient>` (client component):
   - If session exists in localStorage → `router.replace(/hrat/[id]/uzel/<currentNodeId>)`
-  - If no session → renders `<CharacterCreation>`
+  - If no session and `startNodeId` is non-null → renders `<CharacterCreation startNodeId={startNodeId} />`
+  - If `startNodeId` is null → renders error (see Error Handling table)
 
 ### `/hrat/[id]/uzel/[nodeId]/page.tsx` (server component)
 Fetches in parallel:
@@ -164,7 +166,7 @@ Win condition: **best of 3 rounds** — first side to win 2 rounds wins the comb
 1. Player clicks "Hodit kostky"
 2. Both sides roll 1d6 + their combat attribute (`player_attribute` for player, `enemy_attribute` for enemy)
 3. Player roll also adds item bonuses: sum of `stat_bonus_value` for all inventory items where `stat_bonus_attribute === combat_config.player_attribute`
-4. Higher total wins the round; loser takes `max(1, winnerRoll − loserRoll)` HP damage
+4. Higher total wins the round; loser takes `max(1, winnerRoll − loserRoll)` HP damage. On exact tie: no HP lost, round not counted toward win totals (neither side earns a round win — round effectively replayed next turn)
 5. Round win counter incremented for the winner; log entry added
 6. If either side reaches 0 HP → combat ends immediately
 7. If a side reaches 2 round wins → combat ends
@@ -184,6 +186,7 @@ HP is NOT restored between combats. Damage carries over.
 - If result ≥ 7: the lost round becomes a draw (no HP lost for either side)
 - If result < 7: nothing changes
 - Sets `luckUsed = true` regardless of outcome
+- `luckUsed` is component-local state and resets automatically when `<CombatView>` remounts (i.e. each new combat node visit). It is intentionally NOT stored in the session.
 
 ### Enemy stats
 
