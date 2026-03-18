@@ -6,6 +6,7 @@ import NodeDetailPanel from './NodeDetailPanel'
 import ChoiceDetailPanel from './ChoiceDetailPanel'
 import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
+import ItemsLibraryModal from './ItemsLibraryModal'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Node, Choice, Gamebook, NodeType, CombatConfig, Item, NodeItem } from '@/lib/supabase/types'
@@ -481,6 +482,18 @@ export default function GamebookEditor({
             onOutlineGenerated={handleOutlineGenerated}
           />
         </div>
+      )}
+
+      {showItemsLibrary && (
+        <ItemsLibraryModal
+          items={items}
+          nodeItems={nodeItems}
+          allNodes={nodes}
+          onClose={() => setShowItemsLibrary(false)}
+          onCreateItem={handleCreateItem}
+          onUpdateItem={handleUpdateItem}
+          onDeleteItem={handleDeleteItem}
+        />
       )}
     </div>
   )
