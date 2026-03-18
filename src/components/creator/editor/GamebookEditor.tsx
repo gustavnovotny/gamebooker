@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import NodeGraph from './NodeGraph'
 import NodeDetailPanel from './NodeDetailPanel'
 import ChoiceDetailPanel from './ChoiceDetailPanel'
@@ -8,7 +8,7 @@ import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { Node, Choice, Gamebook, NodeType, CombatConfig } from '@/lib/supabase/types'
+import type { Node, Choice, Gamebook, NodeType, CombatConfig, Item, NodeItem } from '@/lib/supabase/types'
 import type { OutlineData } from '@/lib/llm/prompts/generate-outline'
 import { ChevronLeft } from 'lucide-react'
 
@@ -17,6 +17,8 @@ interface GamebookEditorProps {
   initialNodes: Node[]
   initialChoices: Choice[]
   initialCombatConfigs: CombatConfig[]
+  initialItems: Item[]
+  initialNodeItems: NodeItem[]
 }
 
 export default function GamebookEditor({
@@ -24,6 +26,8 @@ export default function GamebookEditor({
   initialNodes,
   initialChoices,
   initialCombatConfigs,
+  initialItems,
+  initialNodeItems,
 }: GamebookEditorProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [choices, setChoices] = useState<Choice[]>(initialChoices)
@@ -35,6 +39,12 @@ export default function GamebookEditor({
   const [showBrainstorm, setShowBrainstorm] = useState(initialNodes.length === 0)
   const [storyFoundation, setStoryFoundation] = useState(gamebook.description ?? '')
   const [editingFoundation, setEditingFoundation] = useState(false)
+  const [items, setItems] = useState<Item[]>(initialItems)
+  const [nodeItems, setNodeItems] = useState<NodeItem[]>(initialNodeItems)
+  const [showItemsLibrary, setShowItemsLibrary] = useState(false)
+
+  const nodeItemsRef = useRef(nodeItems)
+  useEffect(() => { nodeItemsRef.current = nodeItems }, [nodeItems])
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedChoice = choices.find((c) => c.id === selectedChoiceId) ?? null
@@ -150,6 +160,64 @@ export default function GamebookEditor({
     }
   }, [supabase])
 
+  const handleCreateItem = useCallback(async (
+    item: Omit<Item, 'id' | 'gamebook_id'>
+  ): Promise<Item> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase.from('items') as any)
+      .insert({ ...item, gamebook_id: gamebook.id })
+      .select()
+      .single()
+    const newItem = data as Item
+    setItems((prev) => [...prev, newItem])
+    return newItem
+  }, [supabase, gamebook.id])
+
+  const handleUpdateItem = useCallback(async (item: Item): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('items') as any)
+      .update({
+        name: item.name,
+        description: item.description,
+        stat_bonus_attribute: item.stat_bonus_attribute,
+        stat_bonus_value: item.stat_bonus_value,
+      })
+      .eq('id', item.id)
+    setItems((prev) => prev.map((i) => i.id === item.id ? item : i))
+  }, [supabase])
+
+  const handleDeleteItem = useCallback(async (itemId: string): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('items') as any).delete().eq('id', itemId)
+    // node_items cascade automatically (FK ON DELETE CASCADE); update local state to match
+    setItems((prev) => prev.filter((i) => i.id !== itemId))
+    setNodeItems((prev) => prev.filter((ni) => ni.item_id !== itemId))
+  }, [supabase])
+
+  const handleAssignItem = useCallback(async (
+    nodeId: string, itemId: string
+  ): Promise<void> => {
+    // Guard: prevent duplicate (use ref to avoid stale closure without dep array churn)
+    if (nodeItemsRef.current.some((ni) => ni.node_id === nodeId && ni.item_id === itemId)) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('node_items') as any)
+      .insert({ node_id: nodeId, item_id: itemId })
+    setNodeItems((prev) => [...prev, { node_id: nodeId, item_id: itemId }])
+  }, [supabase])
+
+  const handleUnassignItem = useCallback(async (
+    nodeId: string, itemId: string
+  ): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('node_items') as any)
+      .delete()
+      .eq('node_id', nodeId)
+      .eq('item_id', itemId)
+    setNodeItems((prev) =>
+      prev.filter((ni) => !(ni.node_id === nodeId && ni.item_id === itemId))
+    )
+  }, [supabase])
+
   const handleNewConnection = useCallback(async (fromNodeId: string, toNodeId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: newChoice } = await (supabase.from('choices') as any)
@@ -263,6 +331,22 @@ export default function GamebookEditor({
     setNodes(insertedNodes as Node[])
     setChoices((insertedChoices ?? []) as Choice[])
 
+    // Persist AI-suggested items (append to existing items — don't replace)
+    if (outline.suggested_items?.length) {
+      const itemInserts = outline.suggested_items.map((item) => ({
+        gamebook_id: gamebook.id,
+        name: item.name,
+        description: item.description ?? '',
+        stat_bonus_attribute: item.stat_bonus_attribute,
+        stat_bonus_value: item.stat_bonus_value ?? 0,
+      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: insertedItems } = await (supabase.from('items') as any)
+        .insert(itemInserts)
+        .select()
+      if (insertedItems) setItems((prev) => [...prev, ...(insertedItems as Item[])])
+    }
+
     // Persist story foundation extracted from the brainstorm conversation
     if (outline.story_foundation) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -314,6 +398,12 @@ export default function GamebookEditor({
           >
             {showBrainstorm ? 'Skrýt AI asistenta' : 'AI asistent'}
           </button>
+          <button
+            onClick={() => setShowItemsLibrary((v) => !v)}
+            className="text-sm text-indigo-600 hover:underline"
+          >
+            {showItemsLibrary ? 'Skrýt předměty' : 'Předměty'}
+          </button>
           <PublishButton
             gamebookId={gamebook.id}
             currentStatus={gamebook.status}
@@ -355,6 +445,17 @@ export default function GamebookEditor({
                 onSaveCombatConfig={handleSaveCombatConfig}
                 isGenerating={isGenerating}
                 streamingContent={streamingContent}
+                assignedItems={nodeItems
+                  .filter((ni) => ni.node_id === selectedNode.id)
+                  .flatMap((ni) => {
+                    const item = items.find((i) => i.id === ni.item_id)
+                    return item ? [item] : []
+                  })}
+                allGamebookItems={items}
+                onAssignItem={(itemId) => handleAssignItem(selectedNode.id, itemId)}
+                onUnassignItem={(itemId) => handleUnassignItem(selectedNode.id, itemId)}
+                onCreateItem={handleCreateItem}
+                onUpdateItem={handleUpdateItem}
               />
             )}
             {selectedChoice && (

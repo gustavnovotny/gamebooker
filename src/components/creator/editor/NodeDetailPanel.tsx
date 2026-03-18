@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import type { Node, NodeType, CombatConfig } from '@/lib/supabase/types'
+import type { Node, NodeType, CombatConfig, Item } from '@/lib/supabase/types'
 import { Sparkles, Save, X, Plus } from 'lucide-react'
 import CombatConfigForm from './CombatConfigForm'
+import ItemAssignmentPanel from './ItemAssignmentPanel'
 
 interface NodeDetailPanelProps {
   node: Node
@@ -20,6 +21,12 @@ interface NodeDetailPanelProps {
   onSaveCombatConfig: (config: Omit<CombatConfig, 'id'> & { id?: string }) => void
   isGenerating?: boolean
   streamingContent?: string | null
+  assignedItems: Item[]
+  allGamebookItems: Item[]
+  onAssignItem: (itemId: string) => Promise<void>
+  onUnassignItem: (itemId: string) => Promise<void>
+  onCreateItem: (item: Omit<Item, 'id' | 'gamebook_id'>) => Promise<Item>
+  onUpdateItem: (item: Item) => Promise<void>
 }
 
 const TYPE_LABELS: Record<NodeType, string> = {
@@ -49,6 +56,12 @@ export default function NodeDetailPanel({
   onSaveCombatConfig,
   isGenerating = false,
   streamingContent = null,
+  assignedItems,
+  allGamebookItems,
+  onAssignItem,
+  onUnassignItem,
+  onCreateItem,
+  onUpdateItem,
 }: NodeDetailPanelProps) {
   const [title, setTitle] = useState(node.title)
   const [summary, setSummary] = useState(node.summary)
@@ -142,6 +155,18 @@ export default function NodeDetailPanel({
           config={combatConfig}
           allNodes={allNodes}
           onSave={onSaveCombatConfig}
+        />
+      )}
+
+      {node.type === 'item_discovery' && (
+        <ItemAssignmentPanel
+          nodeId={node.id}
+          assignedItems={assignedItems}
+          allGamebookItems={allGamebookItems}
+          onAssignItem={onAssignItem}
+          onUnassignItem={onUnassignItem}
+          onCreateItem={onCreateItem}
+          onUpdateItem={onUpdateItem}
         />
       )}
 
