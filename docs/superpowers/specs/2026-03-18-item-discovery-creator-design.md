@@ -43,7 +43,16 @@ const [nodeItems, setNodeItems] = useState<NodeItem[]>(initialNodeItems)
 ```
 
 **Page-level loading (`src/app/tvorit/[id]/page.tsx`):**
-Fetch `items` and `node_items` in the existing `Promise.all` alongside `combat_configs`.
+Add to the existing `Promise.all` alongside `combat_configs`:
+```typescript
+nodeIds.length > 0
+  ? supabase.from('items').select('*').eq('gamebook_id', id)
+  : supabase.from('items').select('*').eq('gamebook_id', id),  // items are gamebook-scoped, not node-scoped
+nodeIds.length > 0
+  ? supabase.from('node_items').select('*').in('node_id', nodeIds)
+  : Promise.resolve({ data: [] }),
+```
+Note: `items` query uses `gamebook_id`, not `node_id`, so no short-circuit is needed. `node_items` uses `.in('node_id', nodeIds)` same as `combat_configs`.
 
 ---
 
@@ -67,11 +76,14 @@ interface ItemAssignmentPanelProps {
   nodeId: string
   assignedItems: Item[]           // items currently on this node
   allGamebookItems: Item[]        // all items in the gamebook (for picker)
-  onAssignItem: (itemId: string) => void
-  onUnassignItem: (itemId: string) => void
+  onAssignItem: (itemId: string) => Promise<void>
+  onUnassignItem: (itemId: string) => Promise<void>
   onCreateItem: (item: Omit<Item, 'id' | 'gamebook_id'>) => Promise<Item>
-  onUpdateItem: (item: Item) => void
+  onUpdateItem: (item: Item) => Promise<void>
 }
+```
+
+**Create-then-assign flow:** When the creator creates a new item via the inline form, `ItemAssignmentPanel` calls `onCreateItem(...)`, waits for the returned `Item`, then immediately calls `onAssignItem(newItem.id)`. The `onCreateItem` callback does NOT auto-assign — that is the panel's responsibility.
 ```
 
 ### 2. `ItemsLibraryModal` (new)
@@ -89,22 +101,25 @@ A fixed-position modal overlay (max-width 600px, centered) opened from the edito
 
 **Props:**
 ```typescript
+// Node and Item types from '@/lib/supabase/types'
 interface ItemsLibraryModalProps {
   items: Item[]
   nodeItems: NodeItem[]
   allNodes: Node[]
   onClose: () => void
   onCreateItem: (item: Omit<Item, 'id' | 'gamebook_id'>) => Promise<Item>
-  onUpdateItem: (item: Item) => void
-  onDeleteItem: (itemId: string) => void
+  onUpdateItem: (item: Item) => Promise<void>
+  onDeleteItem: (itemId: string) => Promise<void>
 }
 ```
+
+**Node title lookup:** For each item, find assigned node titles by filtering `nodeItems` where `item_id === item.id`, then mapping each `node_id` to the corresponding node title from `allNodes`.
 
 ### 3. `GamebookEditor` changes
 
 - Add `items`, `nodeItems` state and `initialItems`, `initialNodeItems` props.
 - Add handlers: `handleCreateItem`, `handleUpdateItem`, `handleDeleteItem`, `handleAssignItem`, `handleUnassignItem`.
-- Add `showItemsLibrary` boolean state, toggle from header button "Předměty".
+- Add `showItemsLibrary` boolean state, toggle from header button "Předměty" placed between "AI asistent" button and `PublishButton`.
 - Pass correct props to `NodeDetailPanel` and render `ItemsLibraryModal` when `showItemsLibrary === true`.
 - In `handleOutlineGenerated`: after inserting nodes and choices, insert `suggested_items` into the `items` table and update `items` state.
 
@@ -126,17 +141,30 @@ interface ItemsLibraryModalProps {
 handleCreateItem(item: Omit<Item, 'id' | 'gamebook_id'>): Promise<Item>
 // INSERT into items, setItems(prev => [...prev, newItem]), return newItem
 
-handleUpdateItem(item: Item): void
-// UPDATE items, setItems(prev => prev.map(...))
+handleUpdateItem(item: Item): Promise<void>
+// UPDATE items SET name, description, stat_bonus_attribute, stat_bonus_value WHERE id
+// setItems(prev => prev.map(i => i.id === item.id ? item : i))
 
-handleDeleteItem(itemId: string): void
-// DELETE from items (cascades node_items), setItems + setNodeItems filtered
+handleDeleteItem(itemId: string): Promise<void>
+// DELETE FROM items WHERE id = itemId
+// node_items rows cascade automatically (FK: item_id references items(id) ON DELETE CASCADE — confirmed in migration)
+// setItems(prev => prev.filter(i => i.id !== itemId))
+// setNodeItems(prev => prev.filter(ni => ni.item_id !== itemId))
 
-handleAssignItem(nodeId: string, itemId: string): void
-// INSERT into node_items, setNodeItems(prev => [...prev, { node_id, item_id }])
+handleAssignItem(nodeId: string, itemId: string): Promise<void>
+// Guard: if nodeItems already contains { node_id: nodeId, item_id: itemId }, return early (no-op)
+// INSERT INTO node_items (node_id, item_id) VALUES (nodeId, itemId)
+// setNodeItems(prev => [...prev, { node_id: nodeId, item_id: itemId }])
 
-handleUnassignItem(nodeId: string, itemId: string): void
-// DELETE from node_items WHERE node_id AND item_id, setNodeItems filtered
+handleUnassignItem(nodeId: string, itemId: string): Promise<void>
+// DELETE FROM node_items WHERE node_id = nodeId AND item_id = itemId
+// setNodeItems(prev => prev.filter(ni => !(ni.node_id === nodeId && ni.item_id === itemId)))
+```
+
+**Partial application for panel:** `NodeDetailPanel` receives single-argument callbacks. `GamebookEditor` passes closures:
+```typescript
+onAssignItem={(itemId) => handleAssignItem(selectedNode.id, itemId)}
+onUnassignItem={(itemId) => handleUnassignItem(selectedNode.id, itemId)}
 ```
 
 ---
@@ -154,11 +182,16 @@ if (outline.suggested_items?.length) {
     stat_bonus_value: item.stat_bonus_value ?? 0,
   }))
   const { data: insertedItems } = await supabase.from('items').insert(itemInserts).select()
-  if (insertedItems) setItems(insertedItems as Item[])
+  if (insertedItems) setItems(prev => [...prev, ...(insertedItems as Item[])])
 }
 ```
 
+Items are NOT auto-assigned to nodes.
+```
+
 Items are NOT auto-assigned to nodes — the creator decides which item goes on which node.
+
+---
 
 ---
 
