@@ -8,7 +8,7 @@ import PublishButton from './PublishButton'
 import BrainstormChat from '../ai/BrainstormChat'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { Node, Choice, Gamebook, NodeType } from '@/lib/supabase/types'
+import type { Node, Choice, Gamebook, NodeType, CombatConfig } from '@/lib/supabase/types'
 import type { OutlineData } from '@/lib/llm/prompts/generate-outline'
 import { ChevronLeft } from 'lucide-react'
 
@@ -16,15 +16,18 @@ interface GamebookEditorProps {
   gamebook: Gamebook
   initialNodes: Node[]
   initialChoices: Choice[]
+  initialCombatConfigs: CombatConfig[]
 }
 
 export default function GamebookEditor({
   gamebook,
   initialNodes,
   initialChoices,
+  initialCombatConfigs,
 }: GamebookEditorProps) {
   const [nodes, setNodes] = useState<Node[]>(initialNodes)
   const [choices, setChoices] = useState<Choice[]>(initialChoices)
+  const [combatConfigs, setCombatConfigs] = useState<CombatConfig[]>(initialCombatConfigs)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -130,6 +133,22 @@ export default function GamebookEditor({
     await (supabase.from('nodes') as any).update({ content: text }).eq('id', nodeId)
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
+
+  const handleSaveCombatConfig = useCallback(async (
+    config: Omit<CombatConfig, 'id'> & { id?: string }
+  ) => {
+    if (config.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from('combat_configs') as any)
+        .update(config).eq('id', config.id).select().single()
+      if (data) setCombatConfigs((prev) => prev.map((c) => c.id === config.id ? data as CombatConfig : c))
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from('combat_configs') as any)
+        .insert(config).select().single()
+      if (data) setCombatConfigs((prev) => [...prev, data as CombatConfig])
+    }
+  }, [supabase])
 
   const handleNewConnection = useCallback(async (fromNodeId: string, toNodeId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -327,10 +346,13 @@ export default function GamebookEditor({
               <NodeDetailPanel
                 key={selectedNode.id}
                 node={selectedNode}
+                allNodes={nodes}
+                combatConfig={combatConfigs.find((c) => c.node_id === selectedNode.id) ?? null}
                 onSave={handleSaveNode}
                 onGenerateText={handleGenerateText}
                 onClose={() => setSelectedNodeId(null)}
                 onAddNode={handleAddNode}
+                onSaveCombatConfig={handleSaveCombatConfig}
                 isGenerating={isGenerating}
                 streamingContent={streamingContent}
               />

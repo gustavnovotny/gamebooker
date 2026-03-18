@@ -5,15 +5,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import type { Node, NodeType } from '@/lib/supabase/types'
+import type { Node, NodeType, CombatConfig } from '@/lib/supabase/types'
 import { Sparkles, Save, X, Plus } from 'lucide-react'
+import CombatConfigForm from './CombatConfigForm'
 
 interface NodeDetailPanelProps {
   node: Node
+  allNodes: Node[]
+  combatConfig: CombatConfig | null
   onSave: (node: Node) => void
   onGenerateText: (nodeId: string) => void
   onClose: () => void
   onAddNode: (fromNodeId: string, type: NodeType, title: string, choiceText: string) => void
+  onSaveCombatConfig: (config: Omit<CombatConfig, 'id'> & { id?: string }) => void
   isGenerating?: boolean
   streamingContent?: string | null
 }
@@ -36,10 +40,13 @@ const NODE_TYPES: NodeType[] = ['story', 'combat', 'item_discovery', 'ending']
 
 export default function NodeDetailPanel({
   node,
+  allNodes,
+  combatConfig,
   onSave,
   onGenerateText,
   onClose,
   onAddNode,
+  onSaveCombatConfig,
   isGenerating = false,
   streamingContent = null,
 }: NodeDetailPanelProps) {
@@ -128,6 +135,15 @@ export default function NodeDetailPanel({
         <Save className="w-4 h-4 mr-2" />
         Uložit uzel
       </Button>
+
+      {node.type === 'combat' && (
+        <CombatConfigForm
+          nodeId={node.id}
+          config={combatConfig}
+          allNodes={allNodes}
+          onSave={onSaveCombatConfig}
+        />
+      )}
 
       {node.type !== 'ending' && (
         <>

@@ -23,19 +23,26 @@ export default async function EditorPage({ params }: Props) {
 
   if (!gamebook) notFound()
 
-  // Choices depend on node IDs, so fetched after nodes
+  // Choices and combat configs depend on node IDs
   const nodeIds = nodes.map((n) => n.id)
-  const { data: rawChoices } = nodeIds.length > 0
-    ? await supabase.from('choices').select('*').in('from_node_id', nodeIds)
-    : { data: [] }
+  const [{ data: rawChoices }, { data: rawCombatConfigs }] = await Promise.all([
+    nodeIds.length > 0
+      ? supabase.from('choices').select('*').in('from_node_id', nodeIds)
+      : Promise.resolve({ data: [] }),
+    nodeIds.length > 0
+      ? supabase.from('combat_configs').select('*').in('node_id', nodeIds)
+      : Promise.resolve({ data: [] }),
+  ])
 
   const choices = (rawChoices as Choice[]) ?? []
+  const combatConfigs = (rawCombatConfigs as import('@/lib/supabase/types').CombatConfig[]) ?? []
 
   return (
     <GamebookEditor
       gamebook={gamebook}
       initialNodes={nodes ?? []}
       initialChoices={choices ?? []}
+      initialCombatConfigs={combatConfigs}
     />
   )
 }
