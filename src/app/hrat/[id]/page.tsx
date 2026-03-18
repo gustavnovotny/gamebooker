@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import type { Gamebook } from '@/lib/supabase/types'
+import type { Gamebook, Node } from '@/lib/supabase/types'
+import GameStartClient from '@/components/reader/GameStartClient'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -10,24 +11,21 @@ export default async function HratPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data } = await supabase
-    .from('gamebooks')
-    .select('*')
-    .eq('id', id)
-    .eq('status', 'published')
-    .single()
+  const [{ data: rawGamebook }, { data: rawStartNode }] = await Promise.all([
+    supabase.from('gamebooks').select('*').eq('id', id).eq('status', 'published').single(),
+    supabase.from('nodes').select('id').eq('gamebook_id', id).eq('is_start', true).single(),
+  ])
 
-  const gamebook = data as Gamebook | null
+  const gamebook = rawGamebook as Gamebook | null
+  if (!gamebook) notFound()
 
-  if (!gamebook) {
-    notFound()
-  }
+  const startNode = rawStartNode as Pick<Node, 'id'> | null
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
-      <h1 className="text-2xl font-bold">{gamebook.title}</h1>
-      <p className="text-slate-500">{gamebook.description}</p>
-      {/* Plan 3 fills this out */}
-    </main>
+    <GameStartClient
+      gamebookId={id}
+      gamebookTitle={gamebook.title}
+      startNodeId={startNode?.id ?? null}
+    />
   )
 }
