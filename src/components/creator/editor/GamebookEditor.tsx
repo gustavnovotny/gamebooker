@@ -90,6 +90,12 @@ export default function GamebookEditor({
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
 
+  const handleNodePositionChange = useCallback(async (nodeId: string, x: number, y: number) => {
+    setNodes((prev) => prev.map((n) => n.id === nodeId ? { ...n, x, y } : n))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('nodes') as any).update({ x, y }).eq('id', nodeId)
+  }, [supabase])
+
   const handleOutlineGenerated = useCallback(async (outline: OutlineData) => {
     // Auto-layout nodes in a grid (LLM returns x/y=0)
     const COLS = 4
@@ -167,7 +173,7 @@ export default function GamebookEditor({
             choices={choices}
             selectedNodeId={selectedNodeId}
             onNodeSelect={setSelectedNodeId}
-            onNodesChange={setNodes}
+            onNodePositionChange={handleNodePositionChange}
             onChoicesChange={setChoices}
           />
         </div>

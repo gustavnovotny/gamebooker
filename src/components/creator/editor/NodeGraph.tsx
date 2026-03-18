@@ -27,7 +27,7 @@ interface NodeGraphProps {
   choices: Choice[]
   selectedNodeId: string | null
   onNodeSelect: (nodeId: string) => void
-  onNodesChange: (nodes: Node[]) => void
+  onNodePositionChange: (nodeId: string, x: number, y: number) => void
   onChoicesChange: (choices: Choice[]) => void
 }
 
@@ -36,7 +36,7 @@ export default function NodeGraph({
   choices,
   selectedNodeId,
   onNodeSelect,
-  onNodesChange,
+  onNodePositionChange,
   onChoicesChange,
 }: NodeGraphProps) {
   const rfNodes: RFNode[] = useMemo(() =>
@@ -90,12 +90,9 @@ export default function NodeGraph({
   // Persist node positions after drag
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, rfNode: RFNode) => {
-      const updated = nodes.map((n) =>
-        n.id === rfNode.id ? { ...n, x: rfNode.position.x, y: rfNode.position.y } : n
-      )
-      onNodesChange(updated)
+      onNodePositionChange(rfNode.id, rfNode.position.x, rfNode.position.y)
     },
-    [nodes, onNodesChange]
+    [onNodePositionChange]
   )
 
   return (
