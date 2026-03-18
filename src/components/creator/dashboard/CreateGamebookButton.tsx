@@ -36,8 +36,8 @@ export default function CreateGamebookButton({ creatorDisplayName, creatorId }: 
     setError(null)
 
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('gamebooks')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from('gamebooks') as any)
       .insert({
         title: title.trim(),
         creator_id: creatorId,
@@ -55,16 +55,14 @@ export default function CreateGamebookButton({ creatorDisplayName, creatorId }: 
     }
 
     setOpen(false)
-    router.push(`/tvorit/${data.id}`)
+    router.push(`/tvorit/${(data as { id: string }).id}`)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nový gamebook
-        </Button>
+      <DialogTrigger render={<Button />}>
+        <Plus className="w-4 h-4 mr-2" />
+        Nový gamebook
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

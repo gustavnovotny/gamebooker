@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import type { Gamebook } from '@/lib/supabase/types'
 import { BookOpen } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface GamebookListProps {
   gamebooks: Gamebook[]
@@ -37,9 +38,12 @@ export default function GamebookList({ gamebooks }: GamebookListProps) {
             </div>
             <p className="text-sm text-slate-500 line-clamp-1">{gamebook.description}</p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/tvorit/${gamebook.id}`}>Upravit</Link>
-          </Button>
+          <Link
+            href={`/tvorit/${gamebook.id}`}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          >
+            Upravit
+          </Link>
         </div>
       ))}
     </div>

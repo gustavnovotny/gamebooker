@@ -29,8 +29,8 @@ export default function GamebookEditor({
   const supabase = createClient()
 
   const handleSaveNode = useCallback(async (updatedNode: Node) => {
-    await supabase
-      .from('nodes')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('nodes') as any)
       .update({ title: updatedNode.title, content: updatedNode.content })
       .eq('id', updatedNode.id)
 
@@ -84,7 +84,8 @@ export default function GamebookEditor({
     }
 
     // Persist to DB
-    await supabase.from('nodes').update({ content: text }).eq('id', nodeId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('nodes') as any).update({ content: text }).eq('id', nodeId)
     setIsGenerating(false)
   }, [nodes, choices, gamebook, supabase])
 
