@@ -29,6 +29,8 @@ export default function GamebookEditor({
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showBrainstorm, setShowBrainstorm] = useState(initialNodes.length === 0)
+  const [storyFoundation, setStoryFoundation] = useState(gamebook.description ?? '')
+  const [editingFoundation, setEditingFoundation] = useState(false)
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null
   const selectedChoice = choices.find((c) => c.id === selectedChoiceId) ?? null
@@ -43,17 +45,36 @@ export default function GamebookEditor({
     setNodes((prev) => prev.map((n) => n.id === updatedNode.id ? updatedNode : n))
   }, [supabase])
 
+  const handleSaveFoundation = useCallback(async (value: string) => {
+    setStoryFoundation(value)
+    setEditingFoundation(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('gamebooks') as any).update({ description: value }).eq('id', gamebook.id)
+  }, [supabase, gamebook.id])
+
   const handleGenerateText = useCallback(async (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId)
     if (!node) return
 
     setIsGenerating(true)
-    const connectedIds = choices
-      .filter((c) => c.from_node_id === nodeId)
-      .map((c) => c.to_node_id)
-    const connectedSummaries = nodes
-      .filter((n) => connectedIds.includes(n.id))
-      .map((n) => n.title)
+
+    // Incoming: choices leading TO this node + their source nodes
+    const incomingChoices = choices.filter((c) => c.to_node_id === nodeId)
+    const incomingContext = incomingChoices.map((c) => {
+      const fromNode = nodes.find((n) => n.id === c.from_node_id)
+      return {
+        choiceText: c.text,
+        fromNodeTitle: fromNode?.title ?? '',
+        fromNodeContent: fromNode?.content ?? '',
+      }
+    })
+
+    // Outgoing: choices leaving FROM this node + their target nodes
+    const outgoingChoices = choices.filter((c) => c.from_node_id === nodeId)
+    const outgoingNodes = outgoingChoices.map((c) => {
+      const toNode = nodes.find((n) => n.id === c.to_node_id)
+      return { title: toNode?.title ?? '', content: toNode?.content ?? '' }
+    })
 
     const response = await fetch('/api/ai/generate-node-text', {
       method: 'POST',
@@ -61,10 +82,10 @@ export default function GamebookEditor({
       body: JSON.stringify({
         nodeType: node.type,
         nodeTitle: node.title,
-        nodeSummary: node.title,
         gamebookTitle: gamebook.title,
-        storyFoundation: gamebook.description ?? '',
-        connectedNodeSummaries: connectedSummaries,
+        storyFoundation,
+        incomingContext,
+        outgoingNodes,
       }),
     })
 
@@ -213,11 +234,33 @@ export default function GamebookEditor({
     <div className="h-screen flex flex-col">
       {/* Editor header */}
       <header className="border-b bg-white px-4 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <Link href="/tvorit" className="text-slate-400 hover:text-slate-700 transition-colors">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/tvorit" className="text-slate-400 hover:text-slate-700 transition-colors shrink-0">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <h1 className="font-bold text-slate-900">{gamebook.title}</h1>
+          <div className="min-w-0">
+            <h1 className="font-bold text-slate-900 leading-tight">{gamebook.title}</h1>
+            {editingFoundation ? (
+              <input
+                autoFocus
+                defaultValue={storyFoundation}
+                onBlur={(e) => handleSaveFoundation(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveFoundation(e.currentTarget.value)
+                  if (e.key === 'Escape') setEditingFoundation(false)
+                }}
+                className="mt-0.5 text-xs text-slate-500 w-72 border-b border-indigo-400 outline-none bg-transparent"
+                placeholder="Základ příběhu — svět, tón, hlavní téma…"
+              />
+            ) : (
+              <button
+                onClick={() => setEditingFoundation(true)}
+                className="mt-0.5 text-xs text-slate-400 hover:text-slate-600 truncate max-w-xs block text-left"
+              >
+                {storyFoundation || '+ Přidat základ příběhu'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
