@@ -70,7 +70,7 @@ export const OutlineSchema = z.object({
   suggested_items: z.array(z.object({
     name: z.string(),
     description: z.string(),
-    stat_bonus_attribute: z.enum(['sila', 'inteligence', 'obratnost', 'stesti']).nullable().default(null),
+    stat_bonus_attribute: z.enum(['sila', 'inteligence', 'obratnost', 'stesti']).nullable().catch(null),
     stat_bonus_value: z.number().default(0),
   })).default([]),
 })
