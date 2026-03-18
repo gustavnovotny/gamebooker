@@ -76,6 +76,10 @@ export default function NodeGraph({
     setRfNodesState(rfNodes)
   }, [rfNodes, setRfNodesState])
 
+  useEffect(() => {
+    setEdges(rfEdges)
+  }, [rfEdges, setEdges])
+
   const onConnect = useCallback(
     (params: Connection) => {
       setEdges((eds) => addEdge(params, eds))

@@ -176,9 +176,11 @@ export default function GamebookEditor({
         {selectedNode && (
           <div className="w-80 border-l bg-white shrink-0">
             <NodeDetailPanel
+              key={selectedNode.id}
               node={selectedNode}
               onSave={handleSaveNode}
               onGenerateText={handleGenerateText}
+              onClose={() => setSelectedNodeId(null)}
               isGenerating={isGenerating}
             />
           </div>

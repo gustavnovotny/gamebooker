@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import type { Node } from '@/lib/supabase/types'
-import { Sparkles, Save } from 'lucide-react'
+import { Sparkles, Save, X } from 'lucide-react'
 
 interface NodeDetailPanelProps {
   node: Node
   onSave: (node: Node) => void
   onGenerateText: (nodeId: string) => void
+  onClose: () => void
   isGenerating?: boolean
 }
 
@@ -26,10 +27,16 @@ export default function NodeDetailPanel({
   node,
   onSave,
   onGenerateText,
+  onClose,
   isGenerating = false,
 }: NodeDetailPanelProps) {
   const [title, setTitle] = useState(node.title)
   const [content, setContent] = useState(node.content)
+
+  // Sync content when AI generates text (streaming updates node.content in parent)
+  useEffect(() => {
+    setContent(node.content)
+  }, [node.content])
 
   function handleSave() {
     onSave({ ...node, title, content })
@@ -37,9 +44,14 @@ export default function NodeDetailPanel({
 
   return (
     <div className="h-full flex flex-col gap-4 p-4 overflow-y-auto">
-      <div className="flex items-center gap-2">
-        <Badge variant="secondary">{TYPE_LABELS[node.type]}</Badge>
-        {node.is_start && <Badge variant="default">Začátek</Badge>}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{TYPE_LABELS[node.type]}</Badge>
+          {node.is_start && <Badge variant="default">Začátek</Badge>}
+        </div>
+        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
       </div>
 
       <div className="space-y-2">
