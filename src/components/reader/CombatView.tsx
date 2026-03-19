@@ -163,6 +163,7 @@ export default function CombatView({ gamebookId, node, combatConfig, session }: 
         enemyRoundWins: newWins,
         phase,
         pendingLoss: null,
+        luckUsed: true,
         log: [...prev.log, `Ztraceno ${damage} HP`],
       }
     })
