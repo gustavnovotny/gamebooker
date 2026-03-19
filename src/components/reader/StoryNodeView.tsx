@@ -21,7 +21,7 @@ export default function StoryNodeView({ gamebookId, node, choices }: Props) {
           <button
             key={choice.id}
             onClick={() => router.push(`/hrat/${gamebookId}/uzel/${choice.to_node_id}`)}
-            className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors text-sm"
+            className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-900 transition-colors text-sm cursor-pointer"
           >
             {choice.text}
           </button>
